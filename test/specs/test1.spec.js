@@ -1,3 +1,10 @@
+const path = require('path')
+const fs = require('fs')
+const { URL } = require('url')
+const assert = require('assert');
+
+const waitForFileExists = require('../../util/waitForFileExists.js')
+
 describe('Epam Test Suite', () => {
     beforeEach( async () => {
         await browser.url("https://www.epam.com/");
@@ -82,12 +89,24 @@ describe('Epam Test Suite', () => {
 
    it("Check that allows to download report ", async () => {
         await browser.url("https://www.epam.com/about");
-        const fs = require("fs");
         const downloadButton = await $('a[href$=".pdf"]');
         await downloadButton.scrollIntoView();
         await downloadButton.click();
-        const filePath = "/Users/Iryna_Dziadura/Downloads/EPAM_Corporate_Overview_2023.pdf";
-        const fileExists = await fs.existsSync(filePath);
-        await expect(fileExists).toBe(true);
+
+       const downloadHref = await downloadButton.getAttribute('href');
+       const downloadUrl = await new URL(downloadHref)
+       const fullPath = await downloadUrl.pathname;
+       
+       const splitPath = await fullPath.split('/')
+       const fileName = await splitPath.splice(-1)[0]
+       const filePath = await path.join(global.downloadDir, fileName)
+        
+        await browser.call(function () {
+    //call our custom function that checks for the file to exist
+            return waitForFileExists(filePath, 60000)
+       });
+       assert.ok(fs.existsSync(filePath))
+       console.log("FILE " + fileName)
+       assert.ok(fileName.includes('EPAM_Corporate_Overview_Q3_october.pdf'))
     })
-});
+})
